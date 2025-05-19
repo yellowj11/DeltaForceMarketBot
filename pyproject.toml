@@ -1,0 +1,18 @@
+[project]
+name = "dfmarketbot"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "keyboard==0.13.5",
+    "numpy==2.2.6",
+    "opencv-contrib-python==4.11.0.86",
+    "opencv-python==4.11.0.86",
+    "opencv-python-headless==4.11.0.86",
+    "openpyxl==3.1.5",
+    "pandas==2.2.3",
+    "pillow>=11.2.1",
+    "pyautogui==0.9.54",
+    "pytesseract==0.3.13",
+]

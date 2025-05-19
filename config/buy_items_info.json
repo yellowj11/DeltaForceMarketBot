@@ -1,0 +1,67 @@
+{
+   "key_cards": {
+    "chang_gong_xi_gu": [
+      {
+        "name": "酒店国王房",
+        "position_id": "1-1",
+        "base_price": 1039572,
+        "ideal_price": 1500000,
+        "position": [0.5875,0.2111],
+        "want_to_buy": "false",
+        "buy_max_one_time": "false",
+        "buy_times_limit": 1,
+        "buyed_times": 0
+      }
+    ],
+    "ling_hao_da_ba": [
+      {
+        "name": "变电站技术室",
+        "position_id": "1-2",
+        "base_price": 1039572,
+        "ideal_price": 1500000,
+        "position": [0.5875,0.2111],
+        "want_to_buy":"true",
+        "buy_max_one_time": "false",
+        "buy_times_limit": 1,
+        "buyed_times": 0
+      },
+      {
+        "name": "变电站宿舍",
+        "position_id": "5-1",
+        "base_price": 39337,
+        "ideal_price": 35700,
+        "position": [0.3477,0.8035],
+        "want_to_buy":"true",
+        "buy_max_one_time": "false",
+        "buy_times_limit": 1,
+        "buyed_times": 0
+      }
+    ],
+    "hang_tian_ji_di": [
+      {
+        "name": "总裁会客厅",
+        "position_id": "1-1",
+        "base_price": 1039572,
+        "ideal_price": 1500000,
+        "position": [0.5875,0.2111],
+        "want_to_buy":"false",
+        "buy_max_one_time": "false",
+        "buy_times_limit": 1,
+        "buyed_times": 0
+      }
+    ],
+    "ba_ke_shi": [
+      {
+        "name": "总裁会议室",
+        "position_id": "1-2",
+        "base_price": 1039572,
+        "ideal_price": 1500000,
+        "position": [0.5875,0.2111],
+        "want_to_buy":"false",
+        "buy_max_one_time": "false",
+        "buy_times_limit": 1,
+        "buyed_times": 0
+      }
+    ]      
+  }
+}
