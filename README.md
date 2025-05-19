@@ -18,6 +18,7 @@
 
     - 下载地址：https://digi.bib.uni-mannheim.de/tesseract/
     - 安装时可以选择需要的语言包：
+      ![Image](https://github.com/user-attachments/assets/c72ce3f2-c3f9-411a-b7d8-e2d72131e630)
 
 3. 修改 Tesseract 路径
 ```bash
