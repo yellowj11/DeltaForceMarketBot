@@ -20,7 +20,7 @@
         "base_price": 1039572,
         "ideal_price": 1500000,
         "position": [0.5875,0.2111],
-        "want_to_buy":"true",
+        "want_to_buy":"false",
         "buy_max_one_time": "false",
         "buy_times_limit": 1,
         "buyed_times": 0
@@ -63,5 +63,33 @@
         "buyed_times": 0
       }
     ]      
+  },
+  "bullets": {
+    "9x19mm": [
+      {
+        "name": "9x19mm RIP",
+        "position_id": "1-3",
+        "base_price": 521,
+        "ideal_price": 550,
+        "position": [0.8398,0.2181],
+        "want_to_buy": "false",
+        "buy_max_one_time": "false",
+        "buy_times_limit": 1,
+        "buyed_times": 0
+      }
+    ],
+    "4.6x30mm": [
+      {
+        "name": "4.6x30mm FMJ SX",
+        "position_id": "1-3",
+        "base_price": 1505,
+        "ideal_price": 1500,
+        "position": [0.5875,0.2111],
+        "want_to_buy": "true",
+        "buy_max_one_time": "false",
+        "buy_times_limit": 5,
+        "buyed_times": 0
+      }
+    ]
   }
 }

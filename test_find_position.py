@@ -72,7 +72,7 @@
 import pyautogui
 
 # 设置截图文件路径
-image_file = 'img/yaoshi.png'
+image_file = 'img/bullet/.357 Magnum.png'
 
 # 在屏幕上查找图像的中心坐标
 # center = pyautogui.locateCenterOnScreen(image_file)
