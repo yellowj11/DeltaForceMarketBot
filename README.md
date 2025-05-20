@@ -18,6 +18,8 @@
 
     - 下载地址：https://digi.bib.uni-mannheim.de/tesseract/
     - 安装时可以选择需要的语言包：
+      
+      ![Image](https://github.com/user-attachments/assets/53a513f1-34a1-45bf-a7f9-cfd5b5b74a07)
 
 3. 修改 Tesseract 路径
 ```bash
@@ -37,6 +39,8 @@ python main.py
 
 ### 界面预览
 开始运行前，需要保证交易行按钮无遮挡鼠标能点到
+
+![Image](https://github.com/user-attachments/assets/19dd5e96-c969-4d5c-bed1-7497e79f87ca)
 
 ### 配置文件说明
 ```json
