@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "ddddocr>=1.5.6",
     "keyboard==0.13.5",
     "numpy==2.2.6",
     "opencv-contrib-python==4.11.0.86",
@@ -14,5 +15,4 @@ dependencies = [
     "pandas==2.2.3",
     "pillow>=11.2.1",
     "pyautogui==0.9.54",
-    "pytesseract==0.3.13",
 ]

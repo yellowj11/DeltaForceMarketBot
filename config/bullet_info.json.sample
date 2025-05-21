@@ -1,0 +1,15 @@
+{
+    "bullets": [
+      {
+        "name": "9×19mm RIP",
+        "position_id": "1-3",
+        "base_price": 521,
+        "ideal_price": 550,
+        "position": [0.8398,0.2181],
+        "want_to_buy":1,
+        "buy_max": 0,
+        "buy_times_limit": 1,
+        "buy_count": 0
+      }
+    ]
+  }
