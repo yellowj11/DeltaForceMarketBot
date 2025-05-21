@@ -77,6 +77,10 @@ POSITION_MAP = SYS_CONFIG["position_mapping"]
 # 购买按钮位置
 BUY_BUTTON_POSITION = SYS_CONFIG["buy_buttom_position"]
 
+# 菜单按钮图片路径
+MENU_BUTTOM_IMG_PATH_MAPPING = SYS_CONFIG["menu_buttom_img_path_mapping"]
+
+
 if not os.path.exists(LOG_FILE):
     df = pd.DataFrame(
         columns=["购买时间", "名称", "购买物品名称", "购买数量", "购买单价"]
@@ -108,7 +112,9 @@ else:
         df.to_excel(LOG_FILE, index=False)
 
 
-def log_to_excel(item_name: str, buyed_name: str, buyed_num: int, price: int | None) -> None:
+def log_to_excel(
+    item_name: str, buyed_name: str, buyed_num: int, price: int | None
+) -> None:
     """将 购买记录 记录到 Excel"""
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     new_data = pd.DataFrame(
@@ -140,26 +146,24 @@ def take_screenshot(region: tuple[int, int, int, int]) -> np.ndarray:
 
     # 3. 转为灰度图
     gray = cv2.cvtColor(screenshot_bgr, cv2.COLOR_BGR2GRAY)
-    
+
     # 4. 使用锐化滤镜突出边缘
-    kernel = np.array([[-1,-1,-1], 
-                       [-1, 9,-1],
-                       [-1,-1,-1]])
+    kernel = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
     sharpened = cv2.filter2D(gray, -1, kernel)
-    
+
     # 5. 增强对比度
     clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
     enhanced = clahe.apply(sharpened)
-    
+
     # 6. 二值化
     _, binary = cv2.threshold(enhanced, 127, 255, cv2.THRESH_BINARY)
-    
+
     # 7. 形态学处理（可选）
     # 先腐蚀后膨胀，有助于去除小噪点并保持字符形状
     kernel = np.ones((2, 2), np.uint8)
     eroded = cv2.erode(binary, kernel, iterations=1)
     processed = cv2.dilate(eroded, kernel, iterations=1)
-    
+
     # 8. 适当放大
     scale_percent = 200
     width = int(processed.shape[1] * scale_percent / 100)
@@ -171,7 +175,9 @@ def take_screenshot(region: tuple[int, int, int, int]) -> np.ndarray:
     return resized
 
 
-def perform_ocr(image: np.ndarray, debug_name: str | None = None, ocr_type: str = "normal") -> str | None:
+def perform_ocr(
+    image: np.ndarray, debug_name: str | None = None, ocr_type: str = "normal"
+) -> str | None:
     """对图像执行OCR识别"""
     image_pil = Image.fromarray(image)
     if debug_name:
@@ -215,10 +221,6 @@ def getItemPrice() -> int | None:
 
 def getItemName() -> str | None:
     """获取当前物品名称"""
-    # region_width = int(SCREEN_WIDTH * 0.18)
-    # region_height = int(SCREEN_HEIGHT * 0.03)
-    # region_left = int(SCREEN_WIDTH * 0.768)
-    # region_top = int(SCREEN_HEIGHT * 0.145)
     region_width = int(SCREEN_WIDTH * 0.17)
     region_height = int(SCREEN_HEIGHT * 0.03)
     region_left = int(SCREEN_WIDTH * 0.7689)
@@ -356,12 +358,12 @@ def ensure_menu_expanded(menu_name: str) -> str:
         "danyao": {
             "check_img1": "img/bullet/5.54x39mm.png",
             "check_img2": "img/bullet/6.8x51mm.png",
-            "click_img": "img/danyao.png",
+            "click_img": MENU_BUTTOM_IMG_PATH_MAPPING["danyao"],#"img/danyao.png",
         },
         "yaoshi": {
             "check_img1": "img/key_card/ling_hao_da_ba.png",
             "check_img2": "img/key_card/ba_ke_shi.png",
-            "click_img": "img/yaoshi.png",
+            "click_img": MENU_BUTTOM_IMG_PATH_MAPPING["yaoshi"],#"img/yaoshi.png",
         },
     }
     move_to_left_menu()
@@ -384,10 +386,10 @@ def ensure_menu_expanded(menu_name: str) -> str:
 
 def move_into_market() -> None:
     """进入交易行"""
-    move_to_click_img("img/jiaoyihang.png")
+    move_to_click_img(MENU_BUTTOM_IMG_PATH_MAPPING["jiaoyihang"])
 
     # 进入交易行后，确定当前锚点在购买，而不是出售或交易记录
-    move_to_click_img("img/buy_menu.png")
+    move_to_click_img(MENU_BUTTOM_IMG_PATH_MAPPING["buy_menu"])
 
 
 def move_to_left_menu() -> None:
@@ -397,7 +399,7 @@ def move_to_left_menu() -> None:
 
 
 def move_to_click_img(img_path: str, confidence: float = 0.9) -> None:
-    """移动鼠标到图片中心"""
+    """移动鼠标到图片中心点击"""
     try:
         center = pyautogui.locateCenterOnScreen(img_path, confidence=confidence)
         pyautogui.moveTo(center)
@@ -409,18 +411,20 @@ def move_to_click_img(img_path: str, confidence: float = 0.9) -> None:
 
 
 def buy_item(item_info: dict, item_type: str) -> bool:
-    """通用物品购买流程
+    """单个物品的购买处理流程
     
+    处理单个物品的购买逻辑，包括价格判断、相似度检查、购买操作等。
+
     Args:
         item_info: 物品配置信息
         item_type: 物品类型，'key_card'或'bullet'
-        
+
     Returns:
         bool: 是否成功购买
     """
     # 获取对应类型的按钮位置
     buy_button_position = BUY_BUTTON_POSITION[item_type]
-    
+
     # 检查购买次数上限
     buy_times_limit = item_info.get("buy_times_limit", 2)
     buyed_times = item_info.get("buyed_times", 0)
@@ -428,13 +432,13 @@ def buy_item(item_info: dict, item_type: str) -> bool:
     if buyed_times >= buy_times_limit:
         logger.info(f"{item_info['name']} 已购买 {buy_times_limit} 次，跳过当前物品")
         return False
-    
+
     # 点击物品位置
     position = POSITION_MAP[item_info.get("position")]
     pyautogui.moveTo(position[0] * SCREEN_WIDTH, position[1] * SCREEN_HEIGHT)
     clicked_delay()
     time.sleep(0.3)
-    
+
     # 获取物品信息
     try:
         item_name = getItemName().strip()
@@ -449,50 +453,54 @@ def buy_item(item_info: dict, item_type: str) -> bool:
         pyautogui.press("esc")
         time.sleep(0.1)
         return False
-    
+
     # 计算价格信息
     base_price = item_info.get("base_price", 0)
     ideal_price = item_info.get("ideal_price", base_price)
-    max_premium_percent = 10  # 允许最高溢价10%
+    max_premium_percent = int(SYS_CONFIG.get("max_premium_percent", "10%").replace("%", "")) / 100  # 允许最高溢价
     # 如果理想价格低于基准价格太多，则计算溢价基于理想价格
-    if ideal_price < base_price * 0.9:
+    if ideal_price < base_price * (1 - max_premium_percent):
         logger.info("当前设置理想价格低于基准价格90%，计算溢价基于理想价格")
-        max_price = ideal_price * 1.1
-        premium = ((current_price / ideal_price) - 1) * 100
-    elif ideal_price > base_price * 1.1:
+        max_price = ideal_price * (1 + max_premium_percent)
+        premium = ((current_price / ideal_price) - 1) #* 100
+    elif ideal_price > base_price * (1 + max_premium_percent):
         logger.info("当前设置理想价格高于基准价格110%，计算溢价基于理想价格")
-        max_price = ideal_price * 1.1
-        premium = ((current_price / ideal_price) - 1) * 100
+        max_price = ideal_price * (1 + max_premium_percent)
+        premium = ((current_price / ideal_price) - 1) #* 100
     else:
         logger.info("当前计算溢价基于基准价格")
-        max_price = base_price * 1.1  # 最高溢价 10%
-        premium = ((current_price / base_price) - 1) * 100
-    
+        max_price = base_price * (1 + max_premium_percent)  # 最高溢价 10%
+        premium = ((current_price / base_price) - 1) #* 100
+
     # 检查物品名称相似度，去掉空格和引号提高匹配度，ocr可能识别不出空格和引号
     check_item_name = item_info.get("name")
-    similarity = SequenceMatcher(None, item_name, check_item_name.replace("'", '').replace('"', '').replace(' ', '')).ratio()
-    
+    similarity = SequenceMatcher(
+        None,
+        item_name,
+        check_item_name.replace("'", "").replace('"', "").replace(" ", ""),
+    ).ratio()
+
     logger.info(
         f"当前物品: {item_name}  |  需要购买的物品: {check_item_name}  |  相似度: {similarity:.2%}"
     )
-    
+
     if similarity < 0.8:
         logger.info("需要购买的物品与点击的物品相似度不足 80%，已返回上一层")
         pyautogui.press("esc")
         time.sleep(0.1)
         return False
-    
+
     # 输出价格信息
     logger.info(
-        f"基准价格: {base_price} , 理想价格: {ideal_price} | 当前价格: {current_price} ，溢价{premium:.2f}% | 最高溢价百分比：{max_premium_percent}% , 最高溢价：{max_price:.2f}"
+        f"基准价格: {base_price} , 理想价格: {ideal_price} | 当前价格: {current_price} ，溢价{(premium*100):.2f}% | 最高溢价百分比：{max_premium_percent*100}% , 最高溢价：{max_price:.2f}"
     )
-    
+
     # 判断价格是否满足购买条件
     if current_price < ideal_price or premium < 0 or premium <= max_premium_percent:
         # 默认购买数量和乘数
         buy_num = 1
         multiplier = 3 if item_type == "key_card" else 200
-        
+
         # 如果设置了购买最大值
         if item_info.get("buy_max_one_time", "false").lower() == "true":
             logger.info("设置为购买最大值，点击 Max 按钮")
@@ -502,7 +510,7 @@ def buy_item(item_info: dict, item_type: str) -> bool:
             )
             clicked_delay()
             buy_num = buy_num * multiplier
-        
+
         # 点击购买按钮
         pyautogui.moveTo(
             SCREEN_WIDTH * buy_button_position["buy"][0],
@@ -510,9 +518,9 @@ def buy_item(item_info: dict, item_type: str) -> bool:
         )
         clicked_delay()
         time.sleep(0.2)
-        
+
         # 检查是否购买失败
-        if check_img_in_screen("img/buy_fail.png", confidence=0.85):
+        if check_img_in_screen(MENU_BUTTOM_IMG_PATH_MAPPING["buy_failed"], confidence=0.85):
             logger.info(">> 购买失败，最低价格已售罄，重新刷新价格 <<\n\n")
             pyautogui.press("esc")
             time.sleep(0.1)
@@ -523,7 +531,9 @@ def buy_item(item_info: dict, item_type: str) -> bool:
                 f"[+]已自动购买{item_name},价格为：{current_price},溢价：{premium:.2f}%"
             )
             item_info["buyed_times"] = item_info.get("buyed_times", 0) + 1
-            logger.info(f"已购买次数: {item_info.get('buyed_times', 0)}/{buy_times_limit}\n")
+            logger.info(
+                f"已购买次数: {item_info.get('buyed_times', 0)}/{buy_times_limit}\n"
+            )
             log_to_excel(check_item_name, item_name, buy_num, current_price)
             pyautogui.press("esc")
             time.sleep(0.1)
@@ -535,14 +545,245 @@ def buy_item(item_info: dict, item_type: str) -> bool:
         return False
 
 
-def buy_key_card(item_info: dict) -> bool:
+# def buy_key_card(key_cards_to_buy: dict, max_time_per: int = 120) -> bool:
+#     """钥匙房卡购买流程"""
+#     scroll_direction = -100 if ensure_menu_expanded("yaoshi") == "top" else 100
+
+#     logger.info(
+#         "<--------------------------------开始购买房卡-------------------------------->"
+#     )
+#     for map_name, cards in key_cards_to_buy.items():
+#         if not IS_RUNNING:
+#             break
+
+#         logger.info(f"当前地图: {MAP_NAME_CH[map_name]}")
+
+#         for card in cards:
+#             if not IS_RUNNING:
+#                 break
+#             logger.info(f"当前购买房卡: {card['name']}")
+
+#             # 使用滚动查找函数查找子弹类型
+#             move_to_click_found_image(
+#                 f"img/key_card/{map_name}.png",
+#                 scroll_direction=scroll_direction,
+#                 timeout=15,
+#                 initial_confidence=0.95,
+#                 min_confidence=0.9,
+#             )
+
+#             start_time = time.time()
+
+#             # 循环购买当前卡片直到达到购买上限或超时
+#             while (
+#                 card.get("buyed_times", 0) < card.get("buy_times_limit", 2)
+#                 and IS_RUNNING
+#                 and time.time() - start_time < max_time_per
+#             ):
+#                 # buy_key_card(card)
+#                 buy_item(card, "key_card")
+
+#                 time.sleep(0.1)
+
+#             if time.time() - start_time >= max_time_per:
+#                 logger.warning(f"{card['name']} 尝试购买超时，移至下一张卡\n\n")
+#             else:
+#                 logger.info(
+#                     f"{card['name']} 已完成购买，当前购买次数: {card.get('buyed_times', 0)}/{card.get('buy_times_limit', 2)}"
+#                 )
+
+#         logger.info(f"地图 {MAP_NAME_CH[map_name]} 的所有卡片购买完成")
+#         move_to_left_menu()
+
+#     # 关闭钥匙交易界面，准备进入弹药购买
+#     move_to_click_found_image(
+#         "img/yaoshi.png",
+#         scroll_direction=100,
+#         timeout=10,
+#         initial_confidence=0.95,
+#         min_confidence=0.9,
+#     )
+
+#     logger.info(
+#         "<--------------------------------购买房卡完成-------------------------------->"
+#     )
+
+
+# def buy_bullet(bullets_to_buy: dict, max_time_per: int = 120) -> bool:
+#     """弹药购买流程"""
+
+#     scroll_direction = -100 if ensure_menu_expanded("danyao") == "top" else 100
+
+#     logger.info(
+#         "<--------------------------------开始购买弹药-------------------------------->"
+#     )
+#     for type, bullets in bullets_to_buy.items():
+#         if not IS_RUNNING:
+#             break
+
+#         logger.info(f"当前子弹类型: {type}")
+
+#         for bullet in bullets:
+#             if not IS_RUNNING:
+#                 break
+#             logger.info(f"当前购买子弹: {bullet['name']}")
+
+#             # 使用滚动查找函数查找子弹类型
+#             move_to_click_found_image(
+#                 f"img/bullet/{type}.png",
+#                 scroll_direction=scroll_direction,
+#                 timeout=15,
+#                 initial_confidence=0.95,
+#                 min_confidence=0.9,
+#             )
+
+#             start_time = time.time()
+
+#             while (
+#                 bullet.get("buyed_times", 0) < bullet.get("buy_times_limit", 2)
+#                 and IS_RUNNING
+#                 and time.time() - start_time < max_time_per
+#             ):
+#                 # buy_bullet(bullet)
+#                 buy_item(bullet, "bullet")
+
+#                 time.sleep(0.1)
+
+#             if time.time() - start_time >= max_time_per:
+#                 logger.warning(f"{bullet['name']} 尝试购买超时，移至下一个子弹\n\n")
+#             else:
+#                 logger.info(
+#                     f"{bullet['name']} 已完成购买，当前购买次数: {bullet.get('buyed_times', 0)}/{bullet.get('buy_times_limit', 2)}"
+#                 )
+
+#         logger.info(f"{type} 的所有子弹购买完成")
+#         move_to_left_menu()
+
+#     # 使用滚动查找函数查找弹药菜单，向上滚动回到原位置
+#     move_to_click_found_image(
+#         "img/danyao.png",
+#         scroll_direction=100,
+#         timeout=10,
+#         initial_confidence=0.95,
+#         min_confidence=0.9,
+#     )
+
+#     logger.info(
+#         "<--------------------------------购买弹药完成-------------------------------->"
+#     )
+
+
+def process_category(
+    item_info: dict,
+    item_type: str,
+    menu_name: str,
+) -> bool:
+    """物品类别批量购买流程
+    
+    处理整个类别物品的批量购买，包括菜单导航、循环遍历物品列表、购买尝试等。
+
+    Args:
+        item_info: 需要购买的物品字典 如'key_card'或'bullet'
+        item_type: 类别名称，如'房卡'或'弹药'
+        menu_name: 菜单名称，如'yaoshi'或'danyao'
+
+    Returns:
+        bool: 处理完成
+    """
+    global IS_RUNNING
+
+    max_time_per = SYS_CONFIG.get("max_time_per", 120)  # 每种物品最多尝试~秒
+
+    # 确保菜单展开并确定滚动方向
+    scroll_direction = -100 if ensure_menu_expanded(menu_name) == "top" else 100
+
+    category_name = "房卡" if item_type == "key_card" else "弹药"
+
+    logger.info(
+        f"<--------------------------------开始购买{category_name}-------------------------------->"
+    )
+
+    for type_name, items in item_info.items():
+        if not IS_RUNNING:
+            break
+
+        if item_type == "key_card":
+            logger.info(f"当前地图: {MAP_NAME_CH[type_name]}")
+        else:
+            logger.info(f"当前子弹类型: {type_name}")
+
+        for item in items:
+            if not IS_RUNNING:
+                break
+
+            if item_type == "key_card":
+                logger.info(f"当前购买房卡: {item['name']}")
+            else:
+                logger.info(f"当前购买子弹: {item['name']}")
+
+            # 使用滚动查找函数查找物品类型
+            move_to_click_found_image(
+                f"img/{item_type}/{type_name}.png",
+                scroll_direction=scroll_direction,
+                timeout=15,
+                initial_confidence=0.95,
+                min_confidence=0.9,
+            )
+
+            start_time = time.time()
+
+            # 循环购买当前物品直到达到购买上限或超时
+            while (
+                item.get("buyed_times", 0) < item.get("buy_times_limit", 2)
+                and IS_RUNNING
+                and time.time() - start_time < max_time_per
+            ):
+                buy_item(item, item_type)
+                time.sleep(0.1)
+
+            # 区别点3: 超时提示信息不同
+            if time.time() - start_time >= max_time_per:
+                if item_type == "key_card":
+                    logger.warning(f"{item['name']} 尝试购买超时，移至下一张卡\n\n")
+                else:
+                    logger.warning(f"{item['name']} 尝试购买超时，移至下一个子弹\n\n")
+            else:
+                logger.info(
+                    f"{item['name']} 已完成购买，当前购买次数: {item.get('buyed_times', 0)}/{item.get('buy_times_limit', 2)}"
+                )
+
+        if item_type == "key_card":
+            logger.info(f"地图 {MAP_NAME_CH[type_name]} 的所有卡片购买完成")
+        else:
+            logger.info(f"{type_name} 的所有子弹购买完成")
+
+        move_to_left_menu()
+
+    # 使用滚动查找函数查找对应菜单，回到原位置
+    move_to_click_found_image(
+        # f"img/{menu_name}.png",
+        MENU_BUTTOM_IMG_PATH_MAPPING[menu_name],
+        scroll_direction=100,
+        timeout=10,
+        initial_confidence=0.95,
+        min_confidence=0.9,
+    )
+
+    logger.info(
+        f"<--------------------------------购买{category_name}完成-------------------------------->"
+    )
+
+    return True
+
+
+def buy_key_card(key_cards_to_buy: dict) -> bool:
     """钥匙房卡购买流程"""
-    return buy_item(item_info, "key_card")
+    return process_category(key_cards_to_buy, "key_card", "yaoshi")
 
 
-def buy_bullet(item_info: dict) -> bool:
+def buy_bullet(bullets_to_buy: dict) -> bool:
     """弹药购买流程"""
-    return buy_item(item_info, "bullet")
+    return process_category(bullets_to_buy, "bullet", "danyao")
 
 
 def start_loop():
@@ -646,138 +887,14 @@ def main():
     while True:
         if IS_RUNNING and not IS_PAUSED:
             move_into_market()
-            max_time_per = 120  # 每种物品最多尝试~秒
+           
             # 处理钥匙房卡购买
             if key_cards_to_buy:
-                scroll_direction = (
-                    -100 if ensure_menu_expanded("yaoshi") == "top" else 100
-                )
-
-                logger.info(
-                    "<--------------------------------开始购买房卡-------------------------------->"
-                )
-                for map_name, cards in key_cards_to_buy.items():
-                    if not IS_RUNNING:
-                        break
-
-                    logger.info(f"当前地图: {MAP_NAME_CH[map_name]}")
-
-                    for card in cards:
-                        if not IS_RUNNING:
-                            break
-                        logger.info(f"当前购买房卡: {card['name']}")
-
-                        # 使用滚动查找函数查找子弹类型
-                        move_to_click_found_image(
-                            f"img/key_card/{map_name}.png",
-                            scroll_direction=scroll_direction,
-                            timeout=15,
-                            initial_confidence=0.95,
-                            min_confidence=0.9,
-                        )
-
-                        start_time = time.time()
-
-                        # 循环购买当前卡片直到达到购买上限或超时
-                        while (
-                            card.get("buyed_times", 0) < card.get("buy_times_limit", 2)
-                            and IS_RUNNING
-                            and time.time() - start_time < max_time_per
-                        ):
-                            buy_key_card(card)
-
-                            time.sleep(0.1)
-
-                        if time.time() - start_time >= max_time_per:
-                            logger.warning(
-                                f"{card['name']} 尝试购买超时，移至下一张卡\n\n"
-                            )
-                        else:
-                            logger.info(
-                                f"{card['name']} 已完成购买，当前购买次数: {card.get('buyed_times', 0)}/{card.get('buy_times_limit', 2)}"
-                            )
-
-                    logger.info(f"地图 {MAP_NAME_CH[map_name]} 的所有卡片购买完成")
-                    move_to_left_menu()
-
-                # 关闭钥匙交易界面，准备进入弹药购买
-                move_to_click_found_image(
-                    "img/yaoshi.png",
-                    scroll_direction=100,
-                    timeout=10,
-                    initial_confidence=0.95,
-                    min_confidence=0.9,
-                )
-
-                logger.info(
-                    "<--------------------------------购买房卡完成-------------------------------->"
-                )
+                buy_key_card(key_cards_to_buy)
 
             # 处理弹药购买
             if bullets_to_buy:
-                scroll_direction = (
-                    -100 if ensure_menu_expanded("danyao") == "top" else 100
-                )
-
-                logger.info(
-                    "<--------------------------------开始购买弹药-------------------------------->"
-                )
-                for type, bullets in bullets_to_buy.items():
-                    if not IS_RUNNING:
-                        break
-
-                    logger.info(f"当前子弹类型: {type}")
-
-                    for bullet in bullets:
-                        if not IS_RUNNING:
-                            break
-                        logger.info(f"当前购买子弹: {bullet['name']}")
-
-                        # 使用滚动查找函数查找子弹类型
-                        move_to_click_found_image(
-                            f"img/bullet/{type}.png",
-                            scroll_direction=scroll_direction,
-                            timeout=15,
-                            initial_confidence=0.95,
-                            min_confidence=0.9,
-                        )
-
-                        start_time = time.time()
-
-                        while (
-                            bullet.get("buyed_times", 0)
-                            < bullet.get("buy_times_limit", 2)
-                            and IS_RUNNING
-                            and time.time() - start_time < max_time_per
-                        ):
-                            buy_bullet(bullet)
-
-                            time.sleep(0.1)
-
-                        if time.time() - start_time >= max_time_per:
-                            logger.warning(
-                                f"{bullet['name']} 尝试购买超时，移至下一个子弹\n\n"
-                            )
-                        else:
-                            logger.info(
-                                f"{bullet['name']} 已完成购买，当前购买次数: {bullet.get('buyed_times', 0)}/{bullet.get('buy_times_limit', 2)}"
-                            )
-
-                    logger.info(f"{type} 的所有子弹购买完成")
-                    move_to_left_menu()
-
-                # 使用滚动查找函数查找弹药菜单，向上滚动回到原位置
-                move_to_click_found_image(
-                    "img/danyao.png",
-                    scroll_direction=100,
-                    timeout=10,
-                    initial_confidence=0.95,
-                    min_confidence=0.9,
-                )
-
-                logger.info(
-                    "<--------------------------------购买弹药完成-------------------------------->"
-                )
+                buy_bullet(bullets_to_buy)
 
             # 检查是否所有物品都已达到购买上限
             key_cards_finished = (

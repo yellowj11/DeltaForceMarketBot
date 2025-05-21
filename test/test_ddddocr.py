@@ -4,7 +4,6 @@ import numpy as np
 import ddddocr
 from PIL import Image
 import io
-import re
 
 # 配置屏幕尺寸
 screen_width, screen_height = pyautogui.size()

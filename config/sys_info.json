@@ -36,7 +36,16 @@
         "hang_tian_ji_di": "航天基地",
         "ba_ke_shi": "巴克什"
     },
-    "buttom_img_path_mapping":{
-        
-    }
+    "menu_buttom_img_path_mapping":{
+        "yaoshi": "img/yaoshi.png",
+        "danyao": "img/danyao.png",
+        "jiaoyihang": "img/jiaoyihang.png",
+        "buy_menu": "img/buy_menu.png",
+        "buy_succeed": "img/buy_succeed.png",
+        "buy_failed": "img/buy_failed.png"
+    },
+
+    "max_time_per": 300,
+
+    "max_premium_percent": "10%"
 }
