@@ -81,14 +81,14 @@ def ocr_image(image: np.ndarray) -> list[str]:
 
 if __name__ == "__main__":
     # 识别屏幕指定区域
-    # region_width = int(screen_width * 0.08)
-    # region_height = int(screen_height * 0.04)
-    # region_left = int(screen_width * 0.154)
-    # region_top = int(screen_height * 0.154)
-    region_width = int(screen_width * 0.17)
-    region_height = int(screen_height * 0.035)
-    region_left = int(screen_width * 0.7689)
-    region_top = int(screen_height * 0.1445)
+    region_width = int(screen_width * 0.08)
+    region_height = int(screen_height * 0.04)
+    region_left = int(screen_width * 0.154)
+    region_top = int(screen_height * 0.154)
+    # region_width = int(screen_width * 0.17)
+    # region_height = int(screen_height * 0.035)
+    # region_left = int(screen_width * 0.7689)
+    # region_top = int(screen_height * 0.1445)
     region = (region_left, region_top, region_width, region_height)
     screenshot = take_screenshot(region=region, is_chinese=False)
     print("屏幕截图识别结果：")
