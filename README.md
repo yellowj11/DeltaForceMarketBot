@@ -1,79 +1,65 @@
 # DFMarketBot
+
 三角洲行动交易行自动补卡、补子弹，通过OCR+模拟鼠标点击实现自动购买。
 
-
-### 效果预览
+## 功能预览
 ![功能演示](./img/preveiw.gif)
 
-### DFMarketBot 项目目录结构
-
-#### 根目录
-
-- 📂 `config/` - 配置文件目录
-
-- 📂 `img/` - 图像资源目录
-
-- 📂 `log/` - 日志文件目录
-
-- 📄 `.gitignore` - Git忽略文件配置
-
-- 📄 `.python-version` - Python版本配置
-
-- 📄 `debug.py` - 调试工具（获取鼠标坐标）
-
-- 📄 `main.py` - 主程序
-
-- 📄 `pyproject.toml` - 依赖
-
-- 📄 `README.md` - 说明文档
-
-- 📄 `uv.lock` - 依赖锁定文件
-
-### 快速开始
-#### 安装步骤
-1. 初始化
-```bash
-   uv venv -p 3.12
-   uv sync
+## 目录结构
 ```
-2. 安装 [tesseract](https://github.com/tesseract-ocr/tesseract ):
+DFMarketBot/
+├── config/           # 配置文件目录
+├── img/             # 图像资源目录
+├── log/             # 日志文件目录
+├── debug.py         # 调试工具（获取鼠标坐标）
+├── main.py          # 主程序
+├── pyproject.toml   # 项目依赖配置
+├── README.md        # 说明文档
+└── uv.lock          # 依赖锁定文件
+```
 
-    - 下载地址：https://digi.bib.uni-mannheim.de/tesseract/
-    - 安装时可以选择需要的语言包：
-      
-      ![Image](https://github.com/user-attachments/assets/53a513f1-34a1-45bf-a7f9-cfd5b5b74a07)
+## 快速开始
 
-3. 修改 Tesseract 路径
+### 1. 环境准备
 ```bash
-# 在 main.py 中更新为您的安装路径
+# 初始化虚拟环境
+uv venv -p 3.12
+uv sync
+```
+
+### 2. 安装 Tesseract(https://github.com/tesseract-ocr/tesseract)
+1. 下载 [Tesseract](https://digi.bib.uni-mannheim.de/tesseract/)
+2. 安装时选择需要的语言包：
+   ![Tesseract安装](https://github.com/user-attachments/assets/53a513f1-34a1-45bf-a7f9-cfd5b5b74a07)
+3. 修改配置：
+   ```python
+   # 在 main.py 中更新为您的安装路径
    pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-```
+   ```
 
-
-
-### 运行
+### 3. 运行程序
 ```bash
 python main.py
 ```
 - F8: 开始自动购买
 - F9: 停止自动购买
 
-### 注意
-- 运行前，请手动调节游戏显示模式到窗口模式（适配了无窗口模式，但是为了较高识别率，请使用窗口模式），脚本已调整分辨率适配方案，会将游戏窗口调整至1920*1080
+## 使用说明
 
-![Image](https://github.com/user-attachments/assets/07674b92-a3c8-4c61-babc-9685e080a789)
-- 运行期间，需要保证交易行按钮无遮挡鼠标能点到
-- 运行期间屏幕切勿有其他窗口遮挡，会影响鼠标点击
+### 运行环境要求
+1. 游戏设置：
+   - 使用窗口模式（已适配无窗口模式，但窗口模式识别率更高）
+   - 脚本会自动将游戏窗口调整至 1920*1080
+   ![窗口设置](https://github.com/user-attachments/assets/07674b92-a3c8-4c61-babc-9685e080a789)
 
-
-![Image](https://github.com/user-attachments/assets/19dd5e96-c969-4d5c-bed1-7497e79f87ca)
-
-### 配置
-- 运行前请编辑 config/buy_items_info.json 文件，根据需要配置要购买的钥匙卡和弹药。
-- 非必要，请不要修改config/sys_info.json文件
+2. 运行要求：
+   - 交易行按钮需保持可见且可点击
+   - 屏幕上不能有其他窗口遮挡
+   ![界面示例](https://github.com/user-attachments/assets/19dd5e96-c969-4d5c-bed1-7497e79f87ca)
 
 ### 配置文件说明
-1. 需要购买的物品信息，buy_items_info.json示例如下：
+
+#### 1. 购买物品配置 (config/buy_items_info.json)
 ```json
 {
    "key_cards": {
@@ -241,101 +227,66 @@ python main.py
 }
 ```
 
-### 价格判断说明
+#### 2. 系统配置 (config/sys_info.json)
+包含窗口分辨率、坐标映射、界面区域等系统配置，一般无需修改。
 
-DFMarketBot采用智能价格判断系统，确保以最优价格购买物品。
-如下图所示，ocr会识别物品名称和价格，然后根据配置文件中的理想价格、当前价格、最高溢价比例进行判断是否购买。
-![Image](https://github.com/user-attachments/assets/9c8eebe1-f155-4348-9eb3-d945cb3096cd)
+### 价格判断机制
+
 #### 核心参数
-
-- 理想价格：您期望购买的最佳价格
-
-- 当前价格：系统实时识别到的市场价格
-
-- 最高溢价比例：允许高于参考价格的最大比例（默认10%）
-
-#### 溢价计算方式
-溢价公式（%）：((当前价格 / 理想价格) - 1) * 100
-
-系统会根据您设置的理想价格计算基准：
-
-- 以理想价格为基准计算溢价
-
-- 允许的最高价格为理想价格上浮10%
-
+- 理想价格：期望的最佳购买价格
+- 当前价格：实时识别的市场价格
+- 最高溢价：允许的最高溢价比例（默认10%）
 
 #### 购买条件
+满足以下任一条件时执行购买：
+- 当前价格低于理想价格
+- 当前价格溢价不超过10%
 
-系统在满足以下任一条件时会执行购买：
+#### 购买记录
+所有购买记录将保存到Excel文件：
+![购买记录](https://github.com/user-attachments/assets/b4e0ada0-efde-443d-acae-dfe8c1d10cc8)
 
-- 优惠价格：当前价格低于您设定的理想价格
-
-- 负溢价：当前价格低于计算基准
-
-- 合理溢价：当前价格溢价不超过设定的最高溢价（默认10%）
-
-#### 运作流程
-
-- 系统识别市场中物品的实时价格
-
-- 计算价格溢价率并与最高可接受价格比较
-
-- 记录详细价格信息到日志以便追踪
-
-- 根据购买条件自动决定是否购买
-
-- 购买成功后更新交易记录
-
-
-### 调试工具
-
-运行 debug.py 可实时获取鼠标坐标，帮助您配置新的钥匙卡位置:
-
+## 调试工具
+运行调试工具获取鼠标坐标：
 ```bash
 python debug.py
 ```
 
-~~如获取坐标 58.21%,21.25%，则在配置文件中填写 [0.5821,0.2125]。~~
-现已支持坐标映射，非必要不需要修改
+## 更新日志
 
+### 2025-5-25
+1. 修复物品购买数量映射问题
+2. 优化1080p分辨率适配
+3. 提升OCR识别准确度
+4. OCR引擎更换为Tesseract
 
-### 更新
-#### 2025-5-21
-1. tesseract识别中文效果一般，ocr库替换为更轻量级的ddddocr（把项目下的.venv文件夹删除，重新初始化,2025-5-21之后忽略）
-2. 支持购买子弹
-3. 新增支持坐标映射，详见==配置文件说明==
-4. 购买逻辑优化，详见==购买逻辑==
-5. 购买物品信息记录到excel，如下图：
-![购买物品信息](https://github.com/user-attachments/assets/b4e0ada0-efde-443d-acae-dfe8c1d10cc8)
+### 2025-5-22
+1. 新增单次购买数量设置
+2. 优化购买逻辑
 
-#### 2025-5-22
-1. 新增支持单次购买数量设置，详见==配置文件说明==
-2. 优化购买逻辑，去掉基准价格，详见==购买逻辑==
+### 2025-5-21
+1. OCR引擎更换为ddddocr
+2. 新增子弹购买功能
+3. 支持坐标映射
+4. 优化购买逻辑
+5. 新增Excel记录功能
 
-#### 2025-5-25
-1. 修复物品一次购买数量映射错误问题（high low ，购买却用的是min和max）
-2. 修复分辨率不适配1080p问题
-3. 修复1080p下ocr准确度低
+## 常见问题
 
-### 常见问题
-1.截图区域不正确
-> 确认屏幕分辨率为16:9比例
+1. 截图区域不正确
+   > 确认屏幕分辨率为16:9
 
-2.点击无效/无法获取截图
-> 使用管理员权限运行命令提示符(CMD)
+2. 点击无效/无法截图
+   > 使用管理员权限运行CMD
 
-3.更新后依赖问题
-> 删除.venv文件夹，重新初始化
+3. 更新后依赖问题
+   > 删除.venv文件夹重新初始化
 
-### 免责声明
-本脚本仅供学习和研究目的使用，作者不对因使用该脚本而导致的任何后果负责。使用风险完全由用户自行承担。
-- 脚本设计为非侵入性,但使用第三方工具可能违反游戏平台使用条款
-- 使用可能导致账号被封禁或其他形式的处罚
-- 作者不保证脚本的稳定性、安全性或合法性
+## 免责声明
 
-本脚本基于@sheldon1998大佬基础上进行修改：https://github.com/sheldon1998/DeltaForceKeyBot
+本脚本仅供学习研究使用，使用风险由用户自行承担：
+- 使用第三方工具可能违反游戏平台条款
+- 可能导致账号处罚
+- 不保证脚本的稳定性和安全性
 
-脚本是闲暇写的娱乐脚本，功能尚未完善，当前为demo版本，有很多漏洞等待修复，敬请见谅.
-
-### 画饼
-- 增加ui界面
+基于 [@sheldon1998](https://github.com/sheldon1998/DeltaForceKeyBot) 的项目修改开发。
