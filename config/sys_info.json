@@ -1,4 +1,5 @@
 {
+    "windows_resize": [1920, 1080],
     "position_mapping": {
         "1-1": [0.3,0.2],
         "1-2": [0.6,0.2],
@@ -19,30 +20,74 @@
         "6-2": [0.6,0.9],
         "6-3": [0.8,0.9]
     },
-    "buy_buttom_position":{
+    "item_name_region":{
+        "window":{
+            "left": 0.758,
+            "top": 0.165,
+            "width": 0.17,
+            "height": 0.035
+        },
+        "borderless_window":{
+            "left": 0.768,
+            "top": 0.145,
+            "width": 0.17,
+            "height": 0.035
+        }
+    },
+    "item_price_region":{
+        "window":{
+            "left": 0.165,
+            "top": 0.175,
+            "width": 0.08,
+            "height": 0.04
+        },
+        "borderless_window":{
+            "left": 0.153,
+            "top": 0.153,
+            "width": 0.08,
+            "height": 0.04
+        }   
+    },
+    "buy_button_position":{
         "key_card":{
-            "max": [0.9104,0.7807],
-            "medium": [0.8493,0.7807],
-            "min": [0.7973,0.7807],
-            "buy": [0.825,0.852]
+            "window":{
+                "high": [0.8948,0.772],
+                "medium": [0.8365,0.772],
+                "low": [0.7835,0.772],
+                "buy": [0.85,0.85]
+            },
+            "borderless_window":{
+                "high": [0.91,0.772],
+                "medium": [0.85,0.772],
+                "low": [0.7935,0.772],
+                "buy": [0.85,0.85]
+            }
         },
         "bullet":{
-            "max": [0.909,0.722],
-            "medium": [0.8493,0.7204],
-            "min": [0.7973,0.7204],
-            "buy": [0.855,0.797]
+            "window":{
+                "high": [0.8948,0.72],
+                "medium": [0.8365,0.72],
+                "low": [0.7865,0.72],
+                "buy": [0.85,0.8]
+            },
+            "borderless_window":{
+                "high": [0.91,0.72],
+                "medium": [0.8493,0.72],
+                "low": [0.7975,0.72],
+                "buy": [0.85,0.8]
+            }
         }
     },
     "one_time_buy_num_mapping" :{
         "key_card": {
-            "min": 1,
+            "low": 1,
             "medium": 2,
-            "max": 3
+            "high": 3
         },
         "bullet": {
-            "min": 1,
+            "low": 10,
             "medium": 100,
-            "max": 200
+            "high": 200
         }
     },
     "name_cn_mapping": {
@@ -51,7 +96,7 @@
         "hang_tian_ji_di": "航天基地",
         "ba_ke_shi": "巴克什"
     },
-    "menu_buttom_img_path_mapping":{
+    "menu_button_img_path_mapping":{
         "yaoshi": "img/yaoshi.png",
         "danyao": "img/danyao.png",
         "jiaoyihang": "img/jiaoyihang.png",
@@ -59,8 +104,6 @@
         "buy_succeed": "img/buy_succeed.png",
         "buy_failed": "img/buy_failed.png"
     },
-
     "max_time_per": 600,
-
     "max_premium_percent": "10%"
 }

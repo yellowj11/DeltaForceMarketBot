@@ -18,7 +18,7 @@
         "ideal_price": 2500000,
         "position": "1-2",
         "want_to_buy":"false",
-        "buy_max_one_time": "false",
+        "one_time_buy_num": "low",
         "buy_times_limit": 1,
         "buyed_times": 0
       },
@@ -28,7 +28,7 @@
         "ideal_price": 35700,
         "position": "5-1",
         "want_to_buy":"false",
-        "buy_max_one_time": "false",
+        "one_time_buy_num": "low",
         "buy_times_limit": 1,
         "buyed_times": 0
       }
@@ -40,7 +40,7 @@
         "ideal_price": 1500000,
         "position": "1-1",
         "want_to_buy":"false",
-        "buy_max_one_time": "false",
+        "one_time_buy_num": "low",
         "buy_times_limit": 1,
         "buyed_times": 0
       }
@@ -52,7 +52,7 @@
         "ideal_price": 1500000,
         "position": "1-2",
         "want_to_buy":"false",
-        "buy_max_one_time": "false",
+        "one_time_buy_num": "low",
         "buy_times_limit": 1,
         "buyed_times": 0
       }

@@ -1,90 +1,112 @@
-# import pyautogui
-# import pytesseract
-# import cv2
-# import pyautogui
-# import pytesseract
-# import numpy as np
-# pytesseract.pytesseract.tesseract_cmd = r'D:\Program Files\Tesseract-OCR\tesseract.exe'
-
-# def take_screenshot(region):
-#     """截取指定区域的截图并二值化"""
-#     # 1. 截取屏幕
-#     screenshot = pyautogui.screenshot(region=region)
-    
-#     # 2. 转换为OpenCV格式
-#     screenshot_np = np.array(screenshot)
-#     screenshot_bgr = cv2.cvtColor(screenshot_np, cv2.COLOR_RGB2BGR)
-    
-#     # 3. 转为灰度图
-#     gray = cv2.cvtColor(screenshot_bgr, cv2.COLOR_BGR2GRAY)
-
-#     # 4. 去噪
-#     denoised = cv2.fastNlMeansDenoising(
-#         gray, 
-#         h=15,
-#         templateWindowSize=7,
-#         searchWindowSize=21
-#     )
-#     scale_percent = 200  # 放大200%
-#     width = int(denoised.shape[1] * scale_percent / 100)
-#     height = int(denoised.shape[0] * scale_percent / 100)
-#     resized = cv2.resize(denoised, (width, height), interpolation=cv2.INTER_CUBIC)
-
-#     return resized
-
-# # 方法 1：全屏截图
-# screen_width, screen_height = pyautogui.size()
-
-# region_left = int(screen_width * 0.0664)
-# region_top = int(screen_height * 0.0285)
-# region_right = int(screen_width * 0.48)
-# region_bottom = int(screen_height * 0.06)
-
-# region = (region_left, region_top, region_right, region_bottom)
-    
-# screenshot = take_screenshot(region=region)
-# # screenshot_full = pyautogui.screenshot()
-
-# # 转换 PIL Image 为 OpenCV 格式 (RGB to BGR)
-# # screenshot_cv = cv2.cvtColor(numpy.array(screenshot_full), cv2.COLOR_RGB2BGR)
-# cv2.imwrite("./img/screenshot.png", screenshot)
-
-# data_full = pytesseract.image_to_data(screenshot, lang='chi_sim', output_type=pytesseract.Output.DICT)
-# region_left, region_top = 0, 0
-
-# target_text = "交易行"
-# for i in range(len(data_full['text'])):
-#     if data_full['text'][i] == target_text and data_full['conf'][i] > 50:
-#         left_img = data_full['left'][i]
-#         top_img = data_full['top'][i]
-#         width = data_full['width'][i]
-#         height = data_full['height'][i]
-#         screen_left = region_left + left_img
-#         screen_top = region_top + top_img
-#         center_x = screen_left + width / 2
-#         center_y = screen_top + height / 2
-#         pyautogui.moveTo(center_x, center_y)
-#         print(f"全屏模式：鼠标已移动到 ({center_x}, {center_y})")
-#         break
-# else:
-#     print("全屏模式：未找到目标文字")
-
 import pyautogui
+import cv2
+import numpy as np
+from PIL import Image
+import time
+region = (0, 0, 1920, 1080)
 
-# 设置截图文件路径
-image_file = 'img/buy_menu.png'
-screen_width, screen_height = pyautogui.size()
 
-# 在屏幕上查找图像的中心坐标
-center = pyautogui.locateCenterOnScreen(image_file, confidence=0.9)
-# center = pyautogui.locateCenterOnScreen(image_file, confidence=0.9)
-# position = [0.3,0.5]
-# pyautogui.moveTo(position[0] * screen_width, position[1] * screen_height)
+def preprocess_image_complex(image: Image.Image) -> Image.Image:
+    """预处理图像以提高匹配精度"""
+    screenshot_np = np.array(image)
+    screenshot_bgr = cv2.cvtColor(screenshot_np, cv2.COLOR_RGB2BGR)
 
-if center is not None:
-    # 移动鼠标到找到的图像中心
-    pyautogui.moveTo(center)
-    pyautogui.click()
-    print(f"鼠标已移动到位置: {center}")
-else:
-    print("未在屏幕上找到该图像")
+    gray = cv2.cvtColor(screenshot_bgr, cv2.COLOR_BGR2GRAY)
+
+    kernel = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
+    sharpened = cv2.filter2D(gray, -1, kernel)
+
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+    enhanced = clahe.apply(sharpened)
+
+    _, binary = cv2.threshold(enhanced, 127, 255, cv2.THRESH_BINARY)
+
+    kernel = np.ones((2, 2), np.uint8)
+    eroded = cv2.erode(binary, kernel, iterations=1)
+    processed = cv2.dilate(eroded, kernel, iterations=1)
+
+    scale_percent = 400
+    width = int(processed.shape[1] * scale_percent / 100)
+    height = int(processed.shape[0] * scale_percent / 100)
+    resized = cv2.resize(processed, (width, height), interpolation=cv2.INTER_CUBIC)
+
+    enhanced_pil = Image.fromarray(resized)
+    return enhanced_pil
+
+
+# image_file = "img/bullet/12.7x55mm.png"
+image_files = [
+    # "img/bullet/.357 Magnum.png",
+    # "img/bullet/.45 ACP.png",
+    # "img/bullet/.50 AE.png",
+    # "img/bullet/12 Gauge.png",
+    # "img/bullet/12.7x55mm.png",
+    # "img/bullet/5.54x39mm.png",
+    # "img/bullet/5.56x45mm.png",
+    # "img/bullet/5.7x28mm.png",
+    # "img/bullet/5.8x42mm.png",
+    # "img/bullet/6.8x51mm.png",
+    # "img/bullet/7.62x39mm.png",
+    # "img/bullet/7.62x51mm.png",
+    # "img/bullet/7.62x54mm.png",
+    # "img/bullet/9x19mm.png",
+    # "img/bullet/9x39mm.png",
+    # "img/bullet/4.6x30mm.png",
+    # "img/bullet/.300 BLK.png",
+    "img/jiaoyihang.png",
+    "img/buy_menu.png",
+    "img/yaoshi.png",
+    "img/danyao.png",
+    # "img/search.png",
+    # "img/sanjiaozhou.png",
+    # "img/key_card/ling_hao_da_ba.png",
+    # "img/key_card/hang_tian_ji_di.png",
+    # "img/key_card/chang_gong_xi_gu.png",
+    # "img/key_card/ba_ke_shi.png",
+]
+
+# current_resolution = pyautogui.size()  # 获取当前屏幕分辨率
+# reference_resolution = (2560, 1440)  # 假设目标图像在2K下截取
+
+# 计算缩放因子，考虑both宽度和高度
+resize_factor = 1.1
+# resize_factor = current_resolution[0] / reference_resolution[0]  # 宽度比例
+for image_file in image_files:
+    # 加载并预处理目标图像
+    original_image = Image.open(image_file)
+    # processed_image = preprocess_image_complex(original_image)
+
+    # 调整图像大小
+    resized_image = original_image.resize(
+        (
+            int(original_image.width * resize_factor),
+            int(original_image.height * resize_factor),
+        ),
+        Image.Resampling.LANCZOS,
+    )
+
+    # resized_image.save(f"img/debug/{image_file[4:]}.png")
+
+    # 在屏幕上查找图像的中心坐标，从高精度开始尝试
+    confidence = 0.95
+    center = None
+
+    while confidence >= 0.75 and center is None:
+        try:
+            center = pyautogui.locateCenterOnScreen(
+                original_image, confidence=confidence, region=region
+            )
+            if center is not None:
+                print(f"在confidence={confidence:.2f}时找到图像{image_file}")
+                break
+        except pyautogui.ImageNotFoundException:
+            pass
+        confidence -= 0.01
+
+    if center is not None:
+        pyautogui.moveTo(center)
+        pyautogui.click()
+        time.sleep(0.1)
+        print(f"鼠标已移动到位置: {center}")
+    else:
+        print("未在屏幕上找到该图像")

@@ -1,25 +1,45 @@
 {
    "key_cards": {
-    
+    "ling_hao_da_ba": [
+      {
+        "name": "变电站宿舍",
+        "base_price": 39337,
+        "ideal_price": 35700,
+        "position": "5-1",
+        "want_to_buy":"false",
+        "one_time_buy_num": "low",
+        "buy_times_limit": 1,
+        "buyed_times": 0
+      }
+    ]
   },
   "bullets": {
     "9x19mm": [
       {
+        "name": "9x19mm PSO",
+        "ideal_price": 30,
+        "position": "2-2",
+        "want_to_buy": "true",
+        "one_time_buy_num": "high",
+        "buy_times_limit": 1,
+        "buyed_times": 0
+      },
+      {
         "name": "9x19mm RIP",
-        "ideal_price": 595,
+        "ideal_price": 700,
         "position": "1-3",
-        "want_to_buy": "false",
+        "want_to_buy": "true",
         "one_time_buy_num": "low",
-        "buy_times_limit": 150,
+        "buy_times_limit": 1,
         "buyed_times": 0
       },
       {
         "name": "9x19mm AP6.3",
-        "ideal_price": 495,
+        "ideal_price": 600,
         "position": "1-2",
-        "want_to_buy": "false",
-        "one_time_buy_num": "low",
-        "buy_times_limit": 50,
+        "want_to_buy": "true",
+        "one_time_buy_num": "medium",
+        "buy_times_limit": 1,
         "buyed_times": 0
       }
     ],
@@ -28,11 +48,12 @@
         "name": ".45 ACP RIP",
         "ideal_price": 650,
         "position": "1-3",
-        "want_to_buy": "true",
+        "want_to_buy": "false",
         "one_time_buy_num": "low",
         "buy_times_limit": 50,
         "buyed_times": 0
       }
     ]
+    
   }
 }

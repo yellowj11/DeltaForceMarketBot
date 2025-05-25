@@ -1,20 +1,23 @@
 import json
-import pyautogui
-import cv2
-import numpy as np
-import time
-import pandas as pd
-from datetime import datetime
 import logging
 import os
-import keyboard
+import time
+from datetime import datetime
 from difflib import SequenceMatcher
-from pyautogui import ImageNotFoundException
-import ddddocr
-from PIL import Image
-import io
 from typing import Literal
 
+import cv2
+import pytesseract
+import keyboard
+import numpy as np
+import pandas as pd
+import pyautogui
+import pygetwindow as gw
+from PIL import Image
+from pyautogui import ImageNotFoundException
+
+
+pytesseract.pytesseract.tesseract_cmd = r'D:\Program Files\Tesseract-OCR\tesseract.exe'
 
 # 配置日志
 if not os.path.exists("log"):
@@ -58,16 +61,22 @@ def load_config(file_path: str):
 # 全局变量
 IS_RUNNING = False
 IS_PAUSED = False
-SCREEN_WIDTH, SCREEN_HEIGHT = pyautogui.size()
-
-# OCR识别
-OCR = ddddocr.DdddOcr(show_ad=False)
-OCR_FOR_NUM = ddddocr.DdddOcr(show_ad=False)
-OCR_FOR_NUM.set_ranges(0)
 
 # 加载配置文件
 ITEM_CONFIG = load_config(ITEM_CONFIG_FILE)
 SYS_CONFIG = load_config(SYS_CONFIG_FILE)
+
+# 缩放
+WINDOW_RESIZE = SYS_CONFIG["windows_resize"]
+# 窗口设置为1080p
+window = gw.getWindowsWithTitle('三角洲行动')[0]
+window.resizeTo(WINDOW_RESIZE[0], WINDOW_RESIZE[1])
+window.moveTo(0, 0)
+REGION = (window.left, window.top, window.width, window.height)
+SCREEN_WIDTH = WINDOW_RESIZE[0]
+SCREEN_HEIGHT = WINDOW_RESIZE[1]
+
+WINDOW_TYPE = "window"
 
 # 创建地图中文映射
 MAP_NAME_CH = SYS_CONFIG["name_cn_mapping"]
@@ -76,13 +85,13 @@ MAP_NAME_CH = SYS_CONFIG["name_cn_mapping"]
 POSITION_MAP = SYS_CONFIG["position_mapping"]
 
 # 购买按钮位置
-BUY_BUTTON_POSITION = SYS_CONFIG["buy_buttom_position"]
+BUY_BUTTON_POSITION = SYS_CONFIG["buy_button_position"]
 
 # 购买数量映射
 ONE_TIME_BUY_NUM_MAPPING = SYS_CONFIG["one_time_buy_num_mapping"]
 
 # 菜单按钮图片路径
-MENU_BUTTOM_IMG_PATH_MAPPING = SYS_CONFIG["menu_buttom_img_path_mapping"]
+MENU_BUTTON_IMG_PATH_MAPPING = SYS_CONFIG["menu_button_img_path_mapping"]
 
 
 if not os.path.exists(LOG_FILE):
@@ -139,78 +148,49 @@ def log_to_excel(
         new_data.to_excel(LOG_FILE, index=False)
 
 
-def take_screenshot(region: tuple[int, int, int, int]) -> np.ndarray:
-    """截取指定区域的截图并二值化"""
-    # 1. 截取屏幕
+def take_screenshot(region: tuple[int, int, int, int], scale_percent: int = 400) -> np.ndarray:
+    """截取指定区域的截图并预处理"""
+   # 1. 截取屏幕
     screenshot = pyautogui.screenshot(region=region)
-
-    # 2. 转换为 OpenCV 格式
+    
+    # 2. 转换为OpenCV格式
     screenshot_np = np.array(screenshot)
     screenshot_bgr = cv2.cvtColor(screenshot_np, cv2.COLOR_RGB2BGR)
-
+    
     # 3. 转为灰度图
     gray = cv2.cvtColor(screenshot_bgr, cv2.COLOR_BGR2GRAY)
 
-    # 4. 使用锐化滤镜突出边缘
-    kernel = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
-    sharpened = cv2.filter2D(gray, -1, kernel)
-
-    # 5. 增强对比度
-    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
-    enhanced = clahe.apply(sharpened)
-
-    # 6. 二值化
-    _, binary = cv2.threshold(enhanced, 127, 255, cv2.THRESH_BINARY)
-
-    # 7. 形态学处理（可选）
-    # 先腐蚀后膨胀，有助于去除小噪点并保持字符形状
-    kernel = np.ones((2, 2), np.uint8)
-    eroded = cv2.erode(binary, kernel, iterations=1)
-    processed = cv2.dilate(eroded, kernel, iterations=1)
-
-    # 8. 适当放大
-    scale_percent = 400
-    width = int(processed.shape[1] * scale_percent / 100)
-    height = int(processed.shape[0] * scale_percent / 100)
-    resized = cv2.resize(processed, (width, height), interpolation=cv2.INTER_CUBIC)
+    # 4. 去噪
+    denoised = cv2.fastNlMeansDenoising(
+        gray, 
+        h=15,
+        templateWindowSize=7,
+        searchWindowSize=21
+    )
+    scale_percent = 175
+    width = int(denoised.shape[1] * scale_percent / 100)
+    height = int(denoised.shape[0] * scale_percent / 100)
+    resized = cv2.resize(denoised, (width, height), interpolation=cv2.INTER_CUBIC)
 
     # 保存调试图像
-    # cv2.imwrite("./img/name.png", resized)
+    cv2.imwrite("./img/name.png", resized)
     return resized
-
-
-def perform_ocr(
-    image: np.ndarray, debug_name: str | None = None, ocr_type: str = "normal"
-) -> str | None:
-    """对图像执行OCR识别"""
-    image_pil = Image.fromarray(image)
-    if debug_name:
-        cv2.imwrite(f"./img/{debug_name}.png", image)
-
-    try:
-        img_byte_arr = io.BytesIO()
-        image_pil.save(img_byte_arr, format="PNG")
-        img_bytes = img_byte_arr.getvalue()
-        if ocr_type == "num":
-            result = OCR_FOR_NUM.classification(img_bytes)
-        else:
-            result = OCR.classification(img_bytes)
-        return result
-    except Exception:
-        logger.info(f"无法解析{debug_name if debug_name else '内容'}")
-        return None
 
 
 def getItemPrice() -> int | None:
     """获取当前物品价格"""
-    region_width = int(SCREEN_WIDTH * 0.08)
-    region_height = int(SCREEN_HEIGHT * 0.04)
-    region_left = int(SCREEN_WIDTH * 0.154)
-    region_top = int(SCREEN_HEIGHT * 0.154)
+    item_price_region = SYS_CONFIG["item_price_region"][WINDOW_TYPE]
+    region_left = int(SCREEN_WIDTH * item_price_region["left"])
+    region_top = int(SCREEN_HEIGHT * item_price_region["top"])
+    region_width = int(SCREEN_WIDTH * item_price_region["width"])
+    region_height = int(SCREEN_HEIGHT * item_price_region["height"])
+
     region = (region_left, region_top, region_width, region_height)
 
     screenshot = take_screenshot(region=region)
-    price_text = perform_ocr(screenshot, ocr_type="num")
+
+    # price_text = pytesseract.image_to_string(screenshot, lang='eng', config="--psm 6 --oem 3 -c tessedit_char_whitelist=0123456789,")
+    price_text = pytesseract.image_to_string(screenshot, lang='chi_sim+eng', config="--psm 10")
 
     if price_text:
         logger.info(f"提取的物品价格: {price_text}")
@@ -219,20 +199,24 @@ def getItemPrice() -> int | None:
             .replace("O", "0")
             .replace("l", "1")
             .replace("I", "1")
+            .replace(",", "")
+            .replace("，", "")
         )
     return None
 
 
 def getItemName() -> str | None:
     """获取当前物品名称"""
-    region_width = int(SCREEN_WIDTH * 0.17)
-    region_height = int(SCREEN_HEIGHT * 0.035)
-    region_left = int(SCREEN_WIDTH * 0.7689)
-    region_top = int(SCREEN_HEIGHT * 0.1445)
+    item_name_region = SYS_CONFIG["item_name_region"][WINDOW_TYPE]
+    region_left = int(SCREEN_WIDTH * item_name_region["left"])
+    region_top = int(SCREEN_HEIGHT * item_name_region["top"])
+    region_width = int(SCREEN_WIDTH * item_name_region["width"])
+    region_height = int(SCREEN_HEIGHT * item_name_region["height"])
     region = (region_left, region_top, region_width, region_height)
 
     screenshot = take_screenshot(region=region)
-    name = perform_ocr(screenshot)
+
+    name = pytesseract.image_to_string(screenshot, lang='chi_sim+eng', config="--psm 10")
 
     if name:
         logger.info(f"提取的物品名称: {name}")
@@ -244,18 +228,50 @@ def clicked_delay(delay: float = 0.1) -> None:
     pyautogui.click()
     time.sleep(delay)
 
+
 def press_esc_delay(delay: float = 0.1) -> None:
     """按esc键"""
     pyautogui.press("esc")
     time.sleep(delay)
 
+
+def locate_center_on_screen(img_path: str, confidence: float = 0.95, min_confidence: float = 0.8) -> pyautogui.Point | None:
+    """查找图片中心坐标, 适配2k下的截图在不同分辨率下的查找
+
+    Args:
+        img_path: 图片路径
+        confidence (float): 匹配度
+        min_confidence (float): 最低匹配度
+
+    Returns:
+        pyautogui.Point | None: 找到则返回中心坐标点，否则返回None
+    """
+    original_image = Image.open(img_path)
+
+    while confidence >= min_confidence:
+        try:
+            center = pyautogui.locateCenterOnScreen(
+                original_image, confidence=confidence, region=REGION
+            )
+            if center is not None:
+                # logger.info(f"在confidence={confidence:.2f}时找到图像{img_path}")
+                return center
+            
+        except pyautogui.ImageNotFoundException:
+            pass
+        confidence -= 0.01
+
+    raise ImageNotFoundException(
+        f"未能找到图片 {img_path}，已尝试最低匹配度 {min_confidence}"
+    )
+
+
 def find_image_by_scroll(
     img_path: str,
     scroll_direction: int = -100,
     timeout: int = 10,
-    initial_confidence: float = 0.95,
-    min_confidence: float = 0.9,
-    confidence_step: float = 0.01,
+    confidence: float = 0.95,
+    min_confidence: float = 0.8,
 ) -> pyautogui.Point | None:
     """
     通过滚动查找图片，找不到时尝试降低匹配度
@@ -264,40 +280,21 @@ def find_image_by_scroll(
         img_path (str): 图片路径
         scroll_direction (int): 滚动方向和幅度，正数向上滚动，负数向下滚动
         timeout (int): 超时时间（秒）
-        initial_confidence (float): 初始匹配度
+        confidence (float): 匹配度
         min_confidence (float): 最低匹配度
-        confidence_step (float): 每次降低的匹配度步长
-
     Returns:
         pyautogui.Point | None: 找到的图片中心坐标，未找到则返回None
     """
     start_time = time.time()
-    current_confidence = initial_confidence
 
     while time.time() - start_time < timeout:
         try:
-            # 尝试当前匹配度查找图片
-            center = pyautogui.locateCenterOnScreen(
-                img_path, confidence=current_confidence
-            )
-            # logger.info(f"找到图片 {img_path}，匹配度: {current_confidence:.2f}")
+            center = locate_center_on_screen(img_path, confidence=confidence, min_confidence=min_confidence)
             return center
         except ImageNotFoundException:
             # 尝试滚动
             pyautogui.scroll(scroll_direction)
             time.sleep(0.1)
-
-            # 每次滚动后检查是否需要降低匹配度
-            if (
-                time.time() - start_time > timeout / 2
-                and current_confidence > min_confidence
-            ):
-                current_confidence -= confidence_step
-                logger.info(
-                    f"降低匹配度到 {current_confidence:.2f} 继续查找 {img_path}"
-                )
-
-    logger.warning(f"未能找到图片 {img_path}，已尝试最低匹配度 {min_confidence}")
     return None
 
 
@@ -305,8 +302,8 @@ def move_to_click_found_image(
     img_path: str,
     scroll_direction: int = -100,
     timeout: int = 10,
-    initial_confidence: float = 0.95,
-    min_confidence: float = 0.9,
+    confidence: float = 0.95,
+    min_confidence: float = 0.8,
 ) -> bool:
     """
     查找图片并点击，找不到时尝试滚动查找
@@ -315,9 +312,8 @@ def move_to_click_found_image(
         img_path (str): 图片路径
         scroll_direction (int): 滚动方向和幅度，正数向上滚动，负数向下滚动
         timeout (int): 超时时间（秒）
-        initial_confidence (float): 初始匹配度
+        confidence (float): 匹配度
         min_confidence (float): 最低匹配度
-
     Returns:
         bool: 是否成功找到并点击图片
     """
@@ -325,7 +321,7 @@ def move_to_click_found_image(
         img_path=img_path,
         scroll_direction=scroll_direction,
         timeout=timeout,
-        initial_confidence=initial_confidence,
+        confidence=confidence,
         min_confidence=min_confidence,
     )
 
@@ -337,67 +333,28 @@ def move_to_click_found_image(
     return False
 
 
-def check_img_in_screen(check_img: str, confidence: float = 0.9) -> bool:
+def check_img_in_screen(check_img: str, confidence: float = 0.95, min_confidence: float = 0.8) -> bool:
     """检查图片是否在屏幕上"""
     try:
-        pyautogui.locateCenterOnScreen(check_img, confidence=confidence)
+        locate_center_on_screen(check_img, confidence=confidence, min_confidence=min_confidence)
         return True
     except ImageNotFoundException:
         return False
 
 
-def ensure_menu_expanded(menu_name: str) -> str:
-    """
-    确保左侧下拉菜单已展开，未展开则点击菜单展开
-
-    查找图片的逻辑：
-    1. 首先直接尝试查找
-    2. 找不到则先向下滚动5次(每次-100)，每次滚动后检测图片
-    3. 仍找不到则向上滚动10次(每次100)，每次滚动后检测图片
-    4. 如果最终仍未找到，抛出异常
-
-    Args:
-        menu_name (str): 菜单名称,如钥匙，弹药
-
-    Returns:
-        str: 找到的菜单展开锚点的位置，'top' 或 'bottom'
-    """
-    map = {
-        "danyao": {
-            "check_img1": "img/bullet/5.54x39mm.png",
-            "check_img2": "img/bullet/6.8x51mm.png",
-            "click_img": MENU_BUTTOM_IMG_PATH_MAPPING["danyao"],#"img/danyao.png",
-        },
-        "yaoshi": {
-            "check_img1": "img/key_card/ling_hao_da_ba.png",
-            "check_img2": "img/key_card/ba_ke_shi.png",
-            "click_img": MENU_BUTTOM_IMG_PATH_MAPPING["yaoshi"],#"img/yaoshi.png",
-        },
-    }
-    move_to_left_menu()
-
-    if check_img_in_screen(map[menu_name]["check_img1"]):
-        return "top"
-    if check_img_in_screen(map[menu_name]["check_img2"]):
-        return "bottom"
-
-    # 两个展开锚点都未找到，则移动到左侧菜单，准备滚动查找
-    move_to_click_found_image(
-        map[menu_name]["click_img"],
-        scroll_direction=-100,
-        timeout=10,
-        initial_confidence=0.95,
-        min_confidence=0.9,
-    )
-    return "top"
+def check_window_type() -> str:
+    """检查当前窗口类型"""
+    if check_img_in_screen("img/sanjiaozhou.png"):
+        return "window"
+    return "borderless_window"
 
 
 def move_into_market() -> None:
     """进入交易行"""
-    move_to_click_img(MENU_BUTTOM_IMG_PATH_MAPPING["jiaoyihang"])
+    move_to_click_img(img_path=MENU_BUTTON_IMG_PATH_MAPPING["jiaoyihang"], min_confidence=0.75)
 
     # 进入交易行后，确定当前锚点在购买，而不是出售或交易记录
-    move_to_click_img(MENU_BUTTOM_IMG_PATH_MAPPING["buy_menu"])
+    move_to_click_img(MENU_BUTTON_IMG_PATH_MAPPING["buy_menu"])
 
 
 def move_to_left_menu() -> None:
@@ -406,21 +363,48 @@ def move_to_left_menu() -> None:
     time.sleep(0.1)
 
 
-def move_to_click_img(img_path: str, confidence: float = 0.9) -> None:
+def move_to_click_img(img_path: str, confidence: float = 0.95, min_confidence: float = 0.8) -> None:
     """移动鼠标到图片中心点击"""
-    try:
-        center = pyautogui.locateCenterOnScreen(img_path, confidence=confidence)
-        pyautogui.moveTo(center)
-        clicked_delay()
+    center = locate_center_on_screen(img_path, confidence=confidence, min_confidence=min_confidence)
+    pyautogui.moveTo(center)
+    clicked_delay()
 
-    except ImageNotFoundException as e:
-        logger.error(f"未找到图像: {img_path}，错误信息: {e}")
-        raise e
+def ensure_menu_expanded(menu_name: str) -> str:
+    """
+    确保左侧下拉菜单已展开，未展开则点击菜单展开
+
+    Args:
+        menu_name (str): 菜单名称,如钥匙，弹药
+
+    Returns:
+        str: 找到的菜单展开锚点的位置，'top' 或 'bottom'
+    """
+    move_to_left_menu()
+
+    if menu_name == "yaoshi":
+        scroll_direction = -200
+        sub_menu_path = "img/key_card/ling_hao_da_ba.png"
+    else:
+        scroll_direction = 200
+        sub_menu_path = "img/bullet/.50 AE.png"
+
+    if check_img_in_screen(MENU_BUTTON_IMG_PATH_MAPPING[menu_name], min_confidence=0.75):
+        if check_img_in_screen(sub_menu_path):
+            move_to_click_img(MENU_BUTTON_IMG_PATH_MAPPING[menu_name], min_confidence=0.75)
+    else:
+        move_to_click_found_image(
+            MENU_BUTTON_IMG_PATH_MAPPING[menu_name],
+            scroll_direction=scroll_direction,
+            min_confidence=0.75
+        )
+
+    move_to_click_img(MENU_BUTTON_IMG_PATH_MAPPING[menu_name], min_confidence=0.75)
 
 
-def buy_item(item_info: dict, item_type: Literal['key_card', 'bullet']) -> bool:
+
+def buy_item(item_info: dict, item_type: Literal["key_card", "bullet"]) -> bool:
     """单个物品的购买处理流程
-    
+
     处理单个物品的购买逻辑，包括价格判断、相似度检查、购买操作等。
 
     Args:
@@ -445,7 +429,7 @@ def buy_item(item_info: dict, item_type: Literal['key_card', 'bullet']) -> bool:
     position = POSITION_MAP[item_info.get("position")]
     pyautogui.moveTo(position[0] * SCREEN_WIDTH, position[1] * SCREEN_HEIGHT)
     clicked_delay()
-    time.sleep(0.3)
+    time.sleep(0.2)
 
     # 获取物品信息
     try:
@@ -461,29 +445,19 @@ def buy_item(item_info: dict, item_type: Literal['key_card', 'bullet']) -> bool:
         return False
 
     # 计算价格信息
-    # base_price = item_info.get("base_price", 0)
     ideal_price = item_info.get("ideal_price")
-    max_premium_percent = int(SYS_CONFIG.get("max_premium_percent", "10%").replace("%", "")) / 100  # 允许最高溢价
-    # 如果理想价格低于基准价格太多，则计算溢价基于理想价格
-    # if ideal_price < base_price * (1 - max_premium_percent):
-    # logger.info("当前设置理想价格低于基准价格90%，计算溢价基于理想价格")
+    max_premium_percent = (
+        int(SYS_CONFIG.get("max_premium_percent", "10%").replace("%", "")) / 100
+    )  # 允许最高溢价
     max_price = ideal_price * (1 + max_premium_percent)
-    premium = ((current_price / ideal_price) - 1) #* 100
-    # elif ideal_price > base_price * (1 + max_premium_percent):
-        # logger.info("当前设置理想价格高于基准价格110%，计算溢价基于理想价格")
-        # max_price = ideal_price * (1 + max_premium_percent)
-        # premium = ((current_price / ideal_price) - 1) #* 100
-    # else:
-        # logger.info("当前计算溢价基于基准价格")
-        # max_price = base_price * (1 + max_premium_percent)  # 最高溢价 10%
-        # premium = ((current_price / base_price) - 1) #* 100
+    premium = (current_price / ideal_price) - 1  # * 100
 
     # 检查物品名称相似度，去掉空格和引号提高匹配度，ocr可能识别不出空格和引号
     check_item_name = item_info.get("name")
     similarity = SequenceMatcher(
         None,
-        item_name,
-        check_item_name.replace("'", "").replace('"', "").replace(" ", ""),
+        item_name.replace("'", "").replace('"', ""),
+        check_item_name.replace("'", "").replace('"', ""),
     ).ratio()
 
     logger.info(
@@ -497,40 +471,38 @@ def buy_item(item_info: dict, item_type: Literal['key_card', 'bullet']) -> bool:
 
     # 输出价格信息
     logger.info(
-        f"理想价格: {ideal_price} | 当前价格: {current_price} ，溢价{(premium*100):.2f}% | 最高溢价百分比：{max_premium_percent*100}% , 最高溢价：{max_price:.2f}"
+        f"理想价格: {ideal_price} | 当前价格: {current_price} ，溢价{(premium * 100):.2f}% | 最高溢价百分比：{max_premium_percent * 100}% , 最高溢价：{max_price:.2f}"
     )
 
     # 判断价格是否满足购买条件
     if current_price < ideal_price or premium < 0 or premium <= max_premium_percent:
         # 默认购买数量和乘数
         buy_num = 1
-        multiplier = 3 if item_type == "key_card" else 200
-        
+
         # 获取购买数量设置
         one_time_setting = item_info.get("one_time_buy_num", "low")
-        
+
         # 根据物品类型和设置获取购买数量
         buy_num = ONE_TIME_BUY_NUM_MAPPING[item_type][one_time_setting]
-        
+
         # 移动到对应按钮
         pyautogui.moveTo(
-            SCREEN_WIDTH * buy_button_position[one_time_setting][0],
-            SCREEN_HEIGHT * buy_button_position[one_time_setting][1],
+            SCREEN_WIDTH * buy_button_position[WINDOW_TYPE][one_time_setting][0],
+            SCREEN_HEIGHT * buy_button_position[WINDOW_TYPE][one_time_setting][1],
         )
 
         clicked_delay()
-        buy_num = buy_num * multiplier
 
         # 点击购买按钮
         pyautogui.moveTo(
-            SCREEN_WIDTH * buy_button_position["buy"][0],
-            SCREEN_HEIGHT * buy_button_position["buy"][1],
+            SCREEN_WIDTH * buy_button_position[WINDOW_TYPE]["buy"][0],
+            SCREEN_HEIGHT * buy_button_position[WINDOW_TYPE]["buy"][1],
         )
         clicked_delay()
         time.sleep(0.1)
 
         # 检查是否购买失败
-        if check_img_in_screen(MENU_BUTTOM_IMG_PATH_MAPPING["buy_failed"], confidence=0.85):
+        if check_img_in_screen(MENU_BUTTON_IMG_PATH_MAPPING["buy_failed"]):
             logger.info(">> 购买失败，最低价格已售罄，重新刷新价格 <<\n\n")
             press_esc_delay()
             return False
@@ -554,11 +526,11 @@ def buy_item(item_info: dict, item_type: Literal['key_card', 'bullet']) -> bool:
 
 def process_category(
     item_info: dict,
-    item_type: Literal['key_card', 'bullet'],
-    menu_name: Literal['yaoshi', 'danyao'],
+    item_type: Literal["key_card", "bullet"],
+    menu_name: Literal["yaoshi", "danyao"],
 ) -> bool:
     """物品类别批量购买流程
-    
+
     处理整个类别物品的批量购买，包括菜单导航、循环遍历物品列表、购买尝试等。
 
     Args:
@@ -571,10 +543,10 @@ def process_category(
     """
     global IS_RUNNING
 
-    max_time_per = SYS_CONFIG.get("max_time_per", 120)  # 每种物品最多尝试~秒
+    max_time_per = SYS_CONFIG.get("max_time_per", 120)  # 每种物品最多购买~秒
 
-    # 确保菜单展开并确定滚动方向
-    scroll_direction = -100 if ensure_menu_expanded(menu_name) == "top" else 100
+    # 确保菜单展开
+    ensure_menu_expanded(menu_name)
 
     category_name = "房卡" if item_type == "key_card" else "弹药"
 
@@ -603,10 +575,7 @@ def process_category(
             # 使用滚动查找函数查找物品类型
             move_to_click_found_image(
                 f"img/{item_type}/{type_name}.png",
-                scroll_direction=scroll_direction,
-                timeout=15,
-                initial_confidence=0.95,
-                min_confidence=0.9,
+                scroll_direction=-200,
             )
 
             start_time = time.time()
@@ -619,7 +588,6 @@ def process_category(
             ):
                 buy_item(item, item_type)
 
-            # 区别点3: 超时提示信息不同
             if time.time() - start_time >= max_time_per:
                 if item_type == "key_card":
                     logger.warning(f"{item['name']} 尝试购买超时，移至下一张卡\n\n")
@@ -637,14 +605,10 @@ def process_category(
 
         move_to_left_menu()
 
-    # 使用滚动查找函数查找对应菜单，回到原位置
     move_to_click_found_image(
-        # f"img/{menu_name}.png",
-        MENU_BUTTOM_IMG_PATH_MAPPING[menu_name],
-        scroll_direction=100,
-        timeout=10,
-        initial_confidence=0.95,
-        min_confidence=0.9,
+        MENU_BUTTON_IMG_PATH_MAPPING[menu_name],
+        scroll_direction=200,
+        min_confidence=0.75
     )
 
     logger.info(
@@ -723,12 +687,12 @@ def collect_items_to_buy() -> tuple[dict, dict]:
             for map_name, cards in key_cards_to_buy.items():
                 logger.info(f"-----地图: {MAP_NAME_CH[map_name]}-----")
                 for card in cards:
-                     # 获取购买数量设置
+                    # 获取购买数量设置
                     one_time_setting = card.get("one_time_buy_num", "low")
                     # 根据物品类型和设置获取购买数量
-                    buy_num = ONE_TIME_BUY_NUM_MAPPING['key_card'][one_time_setting]
+                    buy_num = ONE_TIME_BUY_NUM_MAPPING["key_card"][one_time_setting]
                     logger.info(
-                        f"     {card['name']} * {int(card['buy_times_limit']) * buy_num }"
+                        f"     {card['name']} * {int(card['buy_times_limit']) * buy_num}"
                     )
             logger.info("")
 
@@ -740,10 +704,10 @@ def collect_items_to_buy() -> tuple[dict, dict]:
                     # 获取购买数量设置
                     one_time_setting = bullet.get("one_time_buy_num", "low")
                     # 根据物品类型和设置获取购买数量
-                    buy_num = ONE_TIME_BUY_NUM_MAPPING['bullet'][one_time_setting]
-    
+                    buy_num = ONE_TIME_BUY_NUM_MAPPING["bullet"][one_time_setting]
+
                     logger.info(
-                        f"     {bullet['name']} * {int(bullet['buy_times_limit']) * buy_num }"
+                        f"     {bullet['name']} * {int(bullet['buy_times_limit']) * buy_num}"
                     )
             logger.info("")
 
@@ -751,20 +715,20 @@ def collect_items_to_buy() -> tuple[dict, dict]:
 
 
 def main():
-    global IS_RUNNING, IS_PAUSED
+    global IS_RUNNING, IS_PAUSED, WINDOW_TYPE
+
+    WINDOW_TYPE = check_window_type()
 
     if not ITEM_CONFIG or not SYS_CONFIG:
         logger.info("无法加载配置文件，程序退出")
         return
 
-    # 调用新方法收集需要购买的物品
     key_cards_to_buy, bullets_to_buy = collect_items_to_buy()
 
     if not key_cards_to_buy and not bullets_to_buy:
         logger.info("没有需要购买的物品，程序退出")
         return
 
-    # 移动到交易行
     logger.info("程序启动，进入交易行")
 
     register_hotkeys()
@@ -774,7 +738,7 @@ def main():
     while True:
         if IS_RUNNING and not IS_PAUSED:
             move_into_market()
-           
+
             # 处理钥匙房卡购买
             if key_cards_to_buy:
                 buy_key_card(key_cards_to_buy)
